@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Реестр доступов подрядчиков</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #d9dde3;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --primary: #2c5aa0;
+    --primary-dark: #1f4170;
+    --red: #c62828;
+    --red-bg: #fde8e8;
+    --yellow: #b8860b;
+    --yellow-bg: #fff4d6;
+    --orange: #c25e00;
+    --orange-bg: #ffe6cc;
+    --gray: #6b7280;
+    --gray-bg: #eceef2;
+    --green: #2e7d32;
+    --green-bg: #e6f4ea;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Демонстрационная плашка */
+  .demo-banner {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #fff8e1;
+    border-bottom: 1px solid #f0d97a;
+    color: #6b4e00;
+    text-align: center;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 20px 24px 48px;
+  }
+
+  /* Заголовок */
+  header.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  header.app-header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  header.app-header .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .check-date {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    box-shadow: var(--shadow);
+  }
+  .check-date label { font-weight: 600; font-size: 13px; }
+  .check-date input {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+
+  /* Сводка */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .summary-card .label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .summary-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .summary-card.active .value { color: var(--primary); }
+  .summary-card.expired .value { color: var(--red); }
+  .summary-card.expiring .value { color: var(--yellow); }
+  .summary-card.nodate .value { color: var(--orange); }
+
+  /* Панель инструментов */
+  .toolbar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+  .toolbar .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: 1 1 auto;
+    align-items: center;
+  }
+  .toolbar label.filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-right: 4px;
+    font-weight: 600;
+  }
+  .toolbar select,
+  .toolbar input[type="text"] {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+  }
+  .toolbar select:focus,
+  .toolbar input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .toolbar .spacer { flex: 1 1 auto; }
+  .btn {
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    border-radius: 4px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #f0f2f5; }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-danger {
+    color: var(--red);
+    border-color: #e1b3b3;
+  }
+  .btn-danger:hover { background: #fde8e8; }
+  .btn-small {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* Форма добавления */
+  .form-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .form-panel.open { display: block; }
+  .form-panel h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .form-grid .field { display: flex; flex-direction: column; gap: 4px; }
+  .form-grid .field.full { grid-column: span 4; }
+  .form-grid .field.half { grid-column: span 2; }
+  .form-grid label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .form-grid label .req { color: var(--red); }
+  .form-grid input,
+  .form-grid select {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+  }
+  .form-grid input:focus,
+  .form-grid select:focus { outline: none; border-color: var(--primary); }
+  .form-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .warning {
+    margin-top: 12px;
+    background: #fff4d6;
+    border: 1px solid #f0d97a;
+    color: #6b4e00;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    display: none;
+  }
+  .warning.show { display: block; }
+  .form-error {
+    margin-top: 12px;
+    color: var(--red);
+    font-size: 13px;
+    display: none;
+  }
+  .form-error.show { display: block; }
+
+  /* Таблица */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .table-wrap::-webkit-scrollbar { height: 10px; }
+  .table-wrap::-webkit-scrollbar-track { background: #f0f2f5; }
+  .table-wrap::-webkit-scrollbar-thumb { background: #c4c9d2; border-radius: 5px; }
+  .table-wrap::-webkit-scrollbar-thumb:hover { background: #a8aeb8; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    background: #f0f2f5;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th.sortable:hover { color: var(--primary); }
+  thead th .sort-ind {
+    font-size: 10px;
+    color: var(--primary);
+    margin-left: 4px;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef0f3;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.risk-Просрочен { background: var(--red-bg); }
+  tbody tr.risk-Истекает { background: var(--yellow-bg); }
+  tbody tr.risk-Безсрока { background: var(--orange-bg); }
+  tbody tr.risk-Отозван { background: var(--gray-bg); color: var(--gray); }
+  tbody tr:hover { background: rgba(44, 90, 160, 0.04); }
+  tbody tr.risk-Просрочен:hover { background: #fbdcdc; }
+  tbody tr.risk-Истекает:hover { background: #fff0c0; }
+  tbody tr.risk-Безсрока:hover { background: #ffdcb3; }
+  tbody tr.risk-Отозван:hover { background: #e2e4ea; }
+
+  /* Sticky-столбцы справа: «Дата окончания», «Риск», «Отозвать» — всегда видны при горизонтальной прокрутке */
+  th.col-end-date, td.col-end-date,
+  th.col-risk, td.col-risk,
+  th.col-action, td.col-action {
+    position: sticky;
+    z-index: 2;
+  }
+  th.col-end-date, th.col-risk, th.col-action {
+    background: #f0f2f5;
+    z-index: 3;
+  }
+  td.col-end-date, td.col-risk, td.col-action {
+    background: #ffffff;
+  }
+  /* Сдвиги справа = сумма ширин столбцов правее текущего */
+  th.col-action, td.col-action { right: 0; width: 120px; min-width: 120px; }
+  th.col-risk, td.col-risk { right: 120px; width: 110px; min-width: 110px; }
+  th.col-end-date, td.col-end-date { right: 230px; width: 130px; min-width: 130px; }
+  /* Тень-разделитель слева от самой левой sticky-колонки */
+  th.col-end-date, td.col-end-date {
+    box-shadow: -2px 0 4px rgba(0,0,0,0.06);
+  }
+  /* Фоны sticky-ячеек под цвет риска (непрозрачные, чтобы не просвечивал прокручиваемый контент) */
+  tr.risk-Просрочен td.col-end-date, tr.risk-Просрочен td.col-risk, tr.risk-Просрочен td.col-action { background: var(--red-bg); }
+  tr.risk-Истекает td.col-end-date, tr.risk-Истекает td.col-risk, tr.risk-Истекает td.col-action { background: var(--yellow-bg); }
+  tr.risk-Безсрока td.col-end-date, tr.risk-Безсрока td.col-risk, tr.risk-Безсрока td.col-action { background: var(--orange-bg); }
+  tr.risk-Отозван td.col-end-date, tr.risk-Отозван td.col-risk, tr.risk-Отозван td.col-action { background: var(--gray-bg); }
+  /* Hover для sticky-ячеек (более высокая специфичность, чем у td.col-*) */
+  tr.risk-Просрочен:hover td.col-end-date, tr.risk-Просрочен:hover td.col-risk, tr.risk-Просрочен:hover td.col-action { background: #fbdcdc; }
+  tr.risk-Истекает:hover td.col-end-date, tr.risk-Истекает:hover td.col-risk, tr.risk-Истекает:hover td.col-action { background: #fff0c0; }
+  tr.risk-Безсрока:hover td.col-end-date, tr.risk-Безсрока:hover td.col-risk, tr.risk-Безсрока:hover td.col-action { background: #ffdcb3; }
+  tr.risk-Отозван:hover td.col-end-date, tr.risk-Отозван:hover td.col-risk, tr.risk-Отозван:hover td.col-action { background: #e2e4ea; }
+  tr:hover td.col-end-date, tr:hover td.col-risk, tr:hover td.col-action { background: rgba(44, 90, 160, 0.08); }
+
+  .risk-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .risk-badge.Просрочен { background: var(--red); color: #fff; }
+  .risk-badge.Истекает { background: var(--yellow); color: #fff; }
+  .risk-badge.Безсрока { background: var(--orange); color: #fff; }
+  .risk-badge.Норма { background: var(--green); color: #fff; }
+  .risk-badge.Отозван { background: var(--gray); color: #fff; }
+
+  .admin-marker {
+    display: inline-block;
+    margin-left: 6px;
+    background: #1f2430;
+    color: #fff;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .empty-row td {
+    text-align: center;
+    color: var(--muted);
+    padding: 32px;
+    font-style: italic;
+  }
+
+  /* Журнал */
+  .log-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+  }
+  .log-panel h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+  }
+  .log-list {
+    max-height: 240px;
+    overflow-y: auto;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--text);
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 12px;
+  }
+  .log-list .log-entry {
+    padding: 3px 0;
+    border-bottom: 1px dotted #eef0f3;
+  }
+  .log-list .log-entry:last-child { border-bottom: none; }
+  .log-list .log-time { color: var(--muted); }
+  .log-list .log-action { font-weight: 700; }
+  .log-empty {
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding: 16px;
+  }
+
+  /* Уведомления */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--text);
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-size: 13px;
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Скрытый input для загрузки файла */
+  #csvFileInput { display: none; }
+
+  @media (max-width: 900px) {
+    .summary { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-grid .field.full { grid-column: span 2; }
+    .form-grid .field.half { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">Демонстрационная версия. Все данные синтетические</div>
+
+<div class="container">
+
+  <header class="app-header">
+    <div>
+      <h1>Реестр доступов подрядчиков</h1>
+      <div class="subtitle">Контроль внешних доступов к сервисам компании</div>
+    </div>
+    <div class="check-date">
+      <label for="checkDate">Дата проверки:</label>
+      <input type="date" id="checkDate">
+    </div>
+  </header>
+
+  <section class="summary" id="summary">
+    <div class="summary-card active">
+      <div class="label">Всего активных</div>
+      <div class="value" id="sumActive">0</div>
+    </div>
+    <div class="summary-card expired">
+      <div class="label">Просроченных</div>
+      <div class="value" id="sumExpired">0</div>
+    </div>
+    <div class="summary-card expiring">
+      <div class="label">Истекает за 14 дней</div>
+      <div class="value" id="sumExpiring">0</div>
+    </div>
+    <div class="summary-card nodate">
+      <div class="label">Без срока</div>
+      <div class="value" id="sumNoDate">0</div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="filters">
+      <span class="filter-label">Риск:</span>
+      <select id="filterRisk">
+        <option value="">Все</option>
+        <option value="Просрочен">Просрочен</option>
+        <option value="Истекает">Истекает</option>
+        <option value="Безсрока">Без срока</option>
+        <option value="Норма">Норма</option>
+        <option value="Отозван">Отозван</option>
+      </select>
+
+      <span class="filter-label">Сервис:</span>
+      <select id="filterService">
+        <option value="">Все</option>
+      </select>
+
+      <span class="filter-label">Тип:</span>
+      <select id="filterType">
+        <option value="">Все</option>
+        <option value="Подрядчик">Подрядчик</option>
+        <option value="Фрилансер">Фрилансер</option>
+        <option value="Партнёр">Партнёр</option>
+      </select>
+
+      <span class="filter-label">Поиск:</span>
+      <input type="text" id="filterSearch" placeholder="ФИО или организация" style="width: 220px;">
+    </div>
+
+    <div class="spacer"></div>
+
+    <button class="btn btn-primary" id="btnToggleForm">+ Добавить доступ</button>
+    <button class="btn" id="btnLoadCsv">Загрузить CSV</button>
+    <button class="btn" id="btnDownloadCsv">Скачать CSV</button>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv">
+  </div>
+
+  <div class="form-panel" id="formPanel">
+    <h3>Добавить доступ</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label>ID</label>
+        <input type="text" id="fCsvId" placeholder="A-037">
+      </div>
+      <div class="field">
+        <label>ФИО внешнего пользователя <span class="req">*</span></label>
+        <input type="text" id="fFio" placeholder="Иванов Иван Иванович">
+      </div>
+      <div class="field">
+        <label>Организация <span class="req">*</span></label>
+        <input type="text" id="fOrg" placeholder='ООО «Ромашка»'>
+      </div>
+      <div class="field">
+        <label>Тип <span class="req">*</span></label>
+        <select id="fType">
+          <option value="Подрядчик">Подрядчик</option>
+          <option value="Фрилансер">Фрилансер</option>
+          <option value="Партнёр">Партнёр</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Сервис <span class="req">*</span></label>
+        <input type="text" id="fService" placeholder="1С / CRM / Почта">
+      </div>
+      <div class="field">
+        <label>Уровень доступа <span class="req">*</span></label>
+        <select id="fLevel">
+          <option value="Просмотр">Просмотр</option>
+          <option value="Редактирование">Редактирование</option>
+          <option value="Администратор">Администратор</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Статус <span class="req">*</span></label>
+        <select id="fStatus">
+          <option value="Активен">Активен</option>
+          <option value="Отозван">Отозван</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Дата выдачи <span class="req">*</span></label>
+        <input type="date" id="fDateStart">
+      </div>
+      <div class="field">
+        <label>Дата окончания <span class="req">*</span></label>
+        <input type="date" id="fDateEnd">
+      </div>
+      <div class="field">
+        <label>Ответственный в компании</label>
+        <input type="text" id="fResponsible" placeholder="Иванов Д.">
+      </div>
+      <div class="field half">
+        <label>Комментарий</label>
+        <input type="text" id="fComment" placeholder="Цель выдачи доступа">
+      </div>
+    </div>
+    <div class="warning" id="adminWarning">Внимание: выдавайте минимально необходимые права. Уровень «Администратор» предоставляет полный контроль над сервисом.</div>
+    <div class="form-error" id="formError"></div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="btnSaveAccess">Сохранить</button>
+      <button class="btn" id="btnCancelForm">Отмена</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="accessTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ФИО внешнего пользователя</th>
+          <th>Организация</th>
+          <th>Тип</th>
+          <th>Сервис</th>
+          <th>Уровень доступа</th>
+          <th>Дата выдачи</th>
+          <th>Статус</th>
+          <th>Ответственный</th>
+          <th>Комментарий</th>
+          <th class="sortable col-end-date" data-sort="dateEnd">Дата окончания <span class="sort-ind" id="sortInd"></span></th>
+          <th class="col-risk">Риск</th>
+          <th class="col-action">Действие</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="log-panel">
+    <h3>Журнал действий</h3>
+    <div class="log-list" id="logList">
+      <div class="log-empty">Журнал пуст</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// ============================================================
+// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ============================================================
+const state = {
+  records: [],
+  checkDate: todayStr(),
+  filters: { risk: "", service: "", type: "", search: "" },
+  sort: { field: "dateEnd", direction: "asc" },
+  log: [],
+  nextId: 1
+};
+
+// ============================================================
+// ДЕМО-ДАННЫЕ (36 синтетических записей).
+// Структура CSV: ID, ФИО внешнего пользователя, Организация, Тип, Сервис,
+// Уровень доступа, Дата выдачи, Дата окончания, Статус, Ответственный в компании, Комментарий.
+// Пустая «Дата окончания» — означает риск «Без срока».
+// ============================================================
+const DEMO_CSV = [
+  ['A-001','Ершов Павел','ИП Ершов П. (веб-разработка)','Фрилансер','Тильда (сайт компании)','Администратор','2026-03-01','2026-06-30','Активен','Смирнова О.','Редизайн сайта завершён'],
+  ['A-002','Котова Алина','ООО «Пиксель Плюс»','Подрядчик','Figma (макеты)','Редактирование','2026-04-10','2026-07-31','Активен','Смирнова О.','Проект закрыт'],
+  ['A-003','Белов Игорь','ИП Белов И. (бухгалтер)','Фрилансер','1С:Бухгалтерия','Администратор','2026-01-15','2026-09-30','Активен','Иванов Д.','Квартальная отчётность сдана'],
+  ['A-004','Ли Анна','ООО «Таргет-Студия»','Подрядчик','Рекламный кабинет VK','Администратор','2026-05-01','2026-08-31','Активен','Петрова Е.','Рекламная кампания окончена'],
+  ['A-005','Мартынов Олег','ООО «СетьСервис»','Подрядчик','VPN офиса','Редактирование','2026-02-01','2026-10-15','Активен','Иванов Д.','Настройка сети'],
+  ['A-006','Голубева Дарья','ИП Голубева Д. (SMM)','Фрилансер','Telegram-канал компании','Администратор','2026-06-01','2026-10-31','Активен','Петрова Е.','Договор не продлён'],
+  ['A-007','Фомин Артём','ООО «Логистик-Про»','Партнёр','Битрикс24 (CRM)','Просмотр','2026-03-15','2026-11-01','Активен','Кузнецов А.','Пилотный проект'],
+  ['A-008','Соколова Вера','ИП Соколова В. (копирайтер)','Фрилансер','Яндекс 360 Диск','Редактирование','2026-07-01','2026-11-10','Активен','Петрова Е.','Тексты для каталога'],
+  ['A-009','Тихонов Роман','ООО «Аудит-Консалт»','Подрядчик','Интернет-банк','Просмотр','2026-09-01','2026-11-25','Активен','Иванов Д.','Аудит за 9 месяцев'],
+  ['A-010','Егорова Ксения','ИП Егорова К. (дизайн)','Фрилансер','Figma (макеты)','Редактирование','2026-10-01','2026-11-28','Активен','Смирнова О.','Новогодняя акция'],
+  ['A-011','Захаров Глеб','ООО «Маркет-Логистика»','Партнёр','Кабинет продавца Wildberries','Редактирование','2026-08-15','2026-12-01','Активен','Кузнецов А.','Поставки к распродаже'],
+  ['A-012','Морозова Инна','ООО «ТехПоддержка 24»','Подрядчик','Google Workspace (почта)','Администратор','2026-06-15','2026-12-05','Активен','Иванов Д.','Миграция почты'],
+  ['A-013','Климов Степан','ИП Климов С. (фотограф)','Фрилансер','Яндекс 360 Диск','Редактирование','2026-11-01','2026-12-10','Активен','Петрова Е.','Фотосъёмка товаров'],
+  ['A-014','Орлова Мария','ООО «Пиксель Плюс»','Подрядчик','Тильда (сайт компании)','Редактирование','2026-09-20','2027-01-31','Активен','Смирнова О.','Поддержка сайта'],
+  ['A-015','Никитин Денис','ООО «СетьСервис»','Подрядчик','Камеры видеонаблюдения','Администратор','2026-04-01','2027-03-31','Активен','Иванов Д.','Обслуживание по договору'],
+  ['A-016','Ахмедова Лейла','ИП Ахмедова Л. (бухгалтер)','Фрилансер','1С:Бухгалтерия','Редактирование','2026-10-01','2027-03-31','Активен','Иванов Д.','Ведение учёта'],
+  ['A-017','Попов Кирилл','ООО «Логистик-Про»','Партнёр','Битрикс24 (CRM)','Просмотр','2026-11-02','2027-05-31','Активен','Кузнецов А.','Основной договор'],
+  ['A-018','Васильева Ольга','ООО «Таргет-Студия»','Подрядчик','Рекламный кабинет VK','Редактирование','2026-10-15','2027-01-15','Активен','Петрова Е.','Зимняя кампания'],
+  ['A-019','Гусев Максим','ИП Гусев М. (разработчик)','Фрилансер','Сервер интернет-магазина','Администратор','2026-08-01','','Активен','Иванов Д.','Срок не указан'],
+  ['A-020','Лебедева Яна','ООО «Контент-Фабрика»','Подрядчик','Google Workspace (почта)','Просмотр','2026-05-20','','Активен','Петрова Е.','Срок не указан'],
+  ['A-021','Щербаков Илья','ООО «Склад-Онлайн»','Партнёр','Кабинет продавца Ozon','Просмотр','2026-09-05','2027-09-04','Активен','Кузнецов А.','Годовой договор'],
+  ['A-022','Медведева Полина','ИП Медведева П. (юрист)','Фрилансер','Яндекс 360 Диск','Просмотр','2026-10-20','2027-02-28','Активен','Иванов Д.','Проверка договоров'],
+  ['A-023','Зайцев Антон','ООО «ТехПоддержка 24»','Подрядчик','Google Workspace (почта)','Редактирование','2026-07-01','2027-06-30','Активен','Иванов Д.','Абонентское обслуживание'],
+  ['A-024','Романова Елена','ООО «Аудит-Консалт»','Подрядчик','1С:Бухгалтерия','Просмотр','2026-02-01','2026-04-30','Отозван','Иванов Д.','Отозван 30.04.2026'],
+  ['A-025','Киселев Юрий','ИП Киселев Ю. (SMM)','Фрилансер','Telegram-канал компании','Администратор','2026-01-10','2026-05-31','Отозван','Петрова Е.','Отозван 02.06.2026'],
+  ['A-026','Павлова Ирина','ООО «Пиксель Плюс»','Подрядчик','Figma (макеты)','Редактирование','2026-02-15','2026-06-15','Отозван','Смирнова О.','Отозван 15.06.2026'],
+  ['A-027','Семенов Виктор','ООО «Логистик-Про»','Партнёр','Битрикс24 (CRM)','Просмотр','2026-01-20','2026-07-20','Отозван','Кузнецов А.','Отозван 21.07.2026'],
+  ['A-028','Андреева Нина','ИП Андреева Н. (переводчик)','Фрилансер','Яндекс 360 Диск','Редактирование','2026-06-01','2026-08-15','Отозван','Петрова Е.','Отозван 16.08.2026'],
+  ['A-029','Борисов Тимур','ООО «СетьСервис»','Подрядчик','VPN офиса','Администратор','2026-03-01','2026-09-01','Отозван','Иванов Д.','Отозван 01.09.2026'],
+  ['A-030','Жукова Алёна','ООО «Таргет-Студия»','Подрядчик','Рекламный кабинет VK','Редактирование','2026-04-01','2026-10-01','Отозван','Петрова Е.','Отозван 03.10.2026'],
+  ['A-031','Кравцов Лев','ИП Кравцов Л. (видео)','Фрилансер','Яндекс 360 Диск','Редактирование','2026-09-01','2026-10-20','Активен','Смирнова О.','Ролик сдан'],
+  ['A-032','Субботина Мила','ООО «Контент-Фабрика»','Подрядчик','Тильда (сайт компании)','Редактирование','2026-06-10','2026-09-10','Активен','Смирнова О.','Блог-статьи'],
+  ['A-033','Титов Арсений','ООО «Маркет-Логистика»','Партнёр','Кабинет продавца Wildberries','Просмотр','2026-10-01','2027-04-01','Активен','Кузнецов А.','Сезонные поставки'],
+  ['A-034','Яковлева Ева','ИП Яковлева Е. (HR)','Фрилансер','Google Workspace (почта)','Редактирование','2026-11-05','2026-12-20','Активен','Иванов Д.','Подбор персонала'],
+  ['A-035','Дмитриев Марк','ООО «Склад-Онлайн»','Партнёр','Интернет-банк','Просмотр','2026-07-15','2026-12-31','Активен','Иванов Д.','Сверка платежей'],
+  ['A-036','Широкова Таисия','ООО «ТехПоддержка 24»','Подрядчик','Сервер интернет-магазина','Администратор','2026-10-10','2027-01-10','Активен','Иванов Д.','Обновление ПО']
+];
+
+// ============================================================
+// УТИЛИТЫ ДЛЯ РАБОТЫ С ДАТАМИ
+// ============================================================
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDate(str) {
+  if (!str || typeof str !== 'string') return null;
+  const parts = str.trim().split('-');
+  if (parts.length !== 3) return null;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+  return new Date(y, m, d);
+}
+
+function daysBetween(fromStr, toStr) {
+  const a = parseDate(fromStr);
+  const b = parseDate(toStr);
+  if (!a || !b) return null;
+  return Math.floor((b.getTime() - a.getTime()) / 86400000);
+}
+
+function formatRuDate(str) {
+  if (!str) return '—';
+  const d = parseDate(str);
+  if (!d) return str;
+  return String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + d.getFullYear();
+}
+
+function nowStamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// ============================================================
+// ВЫЧИСЛЕНИЕ РИСКА
+// ============================================================
+function calcRisk(rec) {
+  if (rec.status === 'Отозван') return 'Отозван';
+  if (rec.status !== 'Активен') return 'Норма';
+
+  if (!rec.dateEnd) return 'Безсрока';
+
+  const diff = daysBetween(state.checkDate, rec.dateEnd);
+  if (diff === null) return 'Безсрока';
+  if (diff < 0) return 'Просрочен';
+  if (diff <= 14) return 'Истекает';
+  return 'Норма';
+}
+
+function riskSortValue(risk) {
+  // порядок для сортировки/группировки (наибольший риск — выше)
+  return { 'Просрочен': 0, 'Истекает': 1, 'Безсрока': 2, 'Норма': 3, 'Отозван': 4 }[risk] || 5;
+}
+
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ ДЕМО-ДАННЫХ
+// ============================================================
+function loadDemoData() {
+  state.records = DEMO_CSV.map(row => ({
+    id: state.nextId++,
+    csvId: row[0],
+    fio: row[1],
+    org: row[2],
+    type: row[3],
+    service: row[4],
+    level: row[5],
+    dateStart: row[6],
+    dateEnd: row[7],
+    status: row[8],
+    responsible: row[9],
+    comment: row[10],
+    dateRevoked: row[8] === 'Отозван' ? row[7] : ''
+  }));
+}
+
+// ============================================================
+// CSV: ПАРСИНГ И СЕРИАЛИЗАЦИЯ
+// ============================================================
+const CSV_HEADERS = ['ID','ФИО внешнего пользователя','Организация','Тип','Сервис','Уровень доступа','Дата выдачи','Дата окончания','Статус','Ответственный в компании','Комментарий'];
+
+function csvEscape(val) {
+  const s = (val === null || val === undefined) ? '' : String(val);
+  if (/[",;\n\r]/.test(s)) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function recordsToCsv(records) {
+  const lines = [CSV_HEADERS.join(',')];
+  records.forEach(r => {
+    lines.push([
+      csvEscape(r.csvId), csvEscape(r.fio), csvEscape(r.org), csvEscape(r.type), csvEscape(r.service),
+      csvEscape(r.level), csvEscape(r.dateStart), csvEscape(r.dateEnd), csvEscape(r.status),
+      csvEscape(r.responsible), csvEscape(r.comment)
+    ].join(','));
+  });
+  return lines.join('\r\n');
+}
+
+function parseCsv(text) {
+  // Убираем BOM (если файл сохранён как UTF-8 with BOM)
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  // Нормализуем переводы строк
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const rows = [];
+  let cur = '';
+  let row = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { cur += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        cur += c;
+      }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',' || c === ';') { row.push(cur); cur = ''; }
+      else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+      else { cur += c; }
+    }
+  }
+  if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }
+  // отрезаем пустые строки в конце
+  while (rows.length && rows[rows.length-1].length === 1 && rows[rows.length-1][0].trim() === '') {
+    rows.pop();
+  }
+  return rows;
+}
+
+function csvToRecords(text) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) throw new Error('CSV не содержит данных (только заголовок или пусто).');
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  // Сопоставление заголовков по русским и английским названиям
+  const idx = {
+    csvId: header.findIndex(h => /^id$/.test(h) || /id записи/i.test(h)),
+    fio: header.findIndex(h => /фио|внешн|fio|name/i.test(h)),
+    org: header.findIndex(h => /организ|org|company/i.test(h)),
+    type: header.findIndex(h => /тип|type/i.test(h)),
+    service: header.findIndex(h => /сервис|service/i.test(h)),
+    level: header.findIndex(h => /уровень|level|rights|права/i.test(h)),
+    dateStart: header.findIndex(h => /выдач|начал|start/i.test(h)),
+    dateEnd: header.findIndex(h => /окончан|конец|end|expir/i.test(h)),
+    status: header.findIndex(h => /статус|status/i.test(h)),
+    responsible: header.findIndex(h => /ответствен|responsible|owner/i.test(h)),
+    comment: header.findIndex(h => /комментар|comment|note|примечан/i.test(h))
+  };
+
+  const records = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.length === 1 && !r[0].trim()) continue;
+    const rec = {
+      id: state.nextId++,
+      csvId: idx.csvId >= 0 ? (r[idx.csvId] || '').trim() : '',
+      fio: idx.fio >= 0 ? (r[idx.fio] || '').trim() : '',
+      org: idx.org >= 0 ? (r[idx.org] || '').trim() : '',
+      type: idx.type >= 0 ? (r[idx.type] || '').trim() : 'Подрядчик',
+      service: idx.service >= 0 ? (r[idx.service] || '').trim() : '',
+      level: idx.level >= 0 ? (r[idx.level] || '').trim() : 'Просмотр',
+      status: idx.status >= 0 ? (r[idx.status] || '').trim() : 'Активен',
+      dateStart: normalizeDate(idx.dateStart >= 0 ? r[idx.dateStart] : ''),
+      dateEnd: normalizeDate(idx.dateEnd >= 0 ? r[idx.dateEnd] : ''),
+      responsible: idx.responsible >= 0 ? (r[idx.responsible] || '').trim() : '',
+      comment: idx.comment >= 0 ? (r[idx.comment] || '').trim() : '',
+      dateRevoked: ''
+    };
+    if (rec.status === 'Отозван') rec.dateRevoked = rec.dateEnd;
+    records.push(rec);
+  }
+  return records;
+}
+
+function normalizeDate(s) {
+  if (!s) return '';
+  s = String(s).trim();
+  // YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  // DD.MM.YYYY
+  m = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return s;
+}
+
+// ============================================================
+// ЖУРНАЛ
+// ============================================================
+function logAction(action, detail) {
+  state.log.unshift({ time: nowStamp(), action, detail });
+  if (state.log.length > 200) state.log.length = 200;
+  renderLog();
+}
+
+function renderLog() {
+  const list = document.getElementById('logList');
+  if (state.log.length === 0) {
+    list.innerHTML = '<div class="log-empty">Журнал пуст</div>';
+    return;
+  }
+  list.innerHTML = state.log.map(e =>
+    `<div class="log-entry"><span class="log-time">[${e.time}]</span> <span class="log-action">${escapeHtml(e.action)}:</span> ${escapeHtml(e.detail)}</div>`
+  ).join('');
+}
+
+// ============================================================
+// СВОДКА
+// ============================================================
+function renderSummary() {
+  let active = 0, expired = 0, expiring = 0, noDate = 0;
+  state.records.forEach(r => {
+    if (r.status !== 'Активен') return;
+    active++;
+    const risk = calcRisk(r);
+    if (risk === 'Просрочен') expired++;
+    else if (risk === 'Истекает') expiring++;
+    else if (risk === 'Безсрока') noDate++;
+  });
+  document.getElementById('sumActive').textContent = active;
+  document.getElementById('sumExpired').textContent = expired;
+  document.getElementById('sumExpiring').textContent = expiring;
+  document.getElementById('sumNoDate').textContent = noDate;
+}
+
+// ============================================================
+// ФИЛЬТРЫ И ТАБЛИЦА
+// ============================================================
+function getFilteredSorted() {
+  const f = state.filters;
+  const q = (f.search || '').trim().toLowerCase();
+  let rows = state.records.filter(r => {
+    const risk = calcRisk(r);
+    if (f.risk && risk !== f.risk) return false;
+    if (f.service && r.service !== f.service) return false;
+    if (f.type && r.type !== f.type) return false;
+    if (q) {
+      const hay = (r.fio + ' ' + r.org).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Сортировка по дате окончания: пустые даты уходят вниз при asc
+  const dir = state.sort.direction === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    const da = parseDate(a.dateEnd);
+    const db = parseDate(b.dateEnd);
+    if (!da && !db) return 0;
+    if (!da) return 1;  // пустая — всегда внизу (при asc)
+    if (!db) return -1;
+    return (da.getTime() - db.getTime()) * dir;
+  });
+  return rows;
+}
+
+function refreshServiceFilter() {
+  const services = Array.from(new Set(state.records.map(r => r.service).filter(Boolean))).sort();
+  const sel = document.getElementById('filterService');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Все</option>' + services.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
+  sel.value = current;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const rows = getFilteredSorted();
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="13">Нет записей по выбранным фильтрам</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const risk = calcRisk(r);
+    const riskClass = risk.replace(/\s+/g, '');
+    const adminBadge = r.level === 'Администратор' ? '<span class="admin-marker" title="Уровень: Администратор">АДМ</span>' : '';
+    const canRevoke = r.status === 'Активен';
+    const revokeBtn = canRevoke
+      ? `<button class="btn btn-danger btn-small" onclick="revokeAccess(${r.id})">Отозвать</button>`
+      : (r.dateRevoked ? `<span style="color: var(--muted); font-size: 11px;">отозван ${formatRuDate(r.dateRevoked)}</span>` : '—');
+    return `<tr class="risk-${riskClass}">
+      <td>${escapeHtml(r.csvId)}</td>
+      <td>${escapeHtml(r.fio)}${adminBadge}</td>
+      <td>${escapeHtml(r.org)}</td>
+      <td>${escapeHtml(r.type)}</td>
+      <td>${escapeHtml(r.service)}</td>
+      <td>${escapeHtml(r.level)}</td>
+      <td>${formatRuDate(r.dateStart)}</td>
+      <td>${escapeHtml(r.status)}</td>
+      <td>${escapeHtml(r.responsible)}</td>
+      <td>${escapeHtml(r.comment)}</td>
+      <td class="col-end-date">${formatRuDate(r.dateEnd)}</td>
+      <td class="col-risk"><span class="risk-badge ${riskClass}">${risk}</span></td>
+      <td class="col-action">${revokeBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAll() {
+  refreshServiceFilter();
+  renderSummary();
+  renderTable();
+}
+
+// ============================================================
+// ДЕЙСТВИЯ
+// ============================================================
+function revokeAccess(id) {
+  const r = state.records.find(x => x.id === id);
+  if (!r) return;
+  if (r.status !== 'Активен') return;
+  r.status = 'Отозван';
+  r.dateRevoked = state.checkDate;
+  logAction('Отозван доступ', `${r.fio} — ${r.service} (${r.org})`);
+  showToast(`Доступ отозван: ${r.fio}`);
+  renderAll();
+}
+
+// Генерация следующего ID в формате A-XXX по существующим записям
+function generateNextCsvId() {
+  let max = 0;
+  state.records.forEach(r => {
+    if (r.csvId) {
+      const m = r.csvId.match(/A-(\d+)/i);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+  });
+  return 'A-' + String(max + 1).padStart(3, '0');
+}
+
+function addAccessFromForm() {
+  const csvId = document.getElementById('fCsvId').value.trim() || generateNextCsvId();
+  const fio = document.getElementById('fFio').value.trim();
+  const org = document.getElementById('fOrg').value.trim();
+  const type = document.getElementById('fType').value.trim();
+  const service = document.getElementById('fService').value.trim();
+  const level = document.getElementById('fLevel').value.trim();
+  const dateStart = document.getElementById('fDateStart').value;
+  const dateEnd = document.getElementById('fDateEnd').value;
+  const status = document.getElementById('fStatus').value.trim();
+  const responsible = document.getElementById('fResponsible').value.trim();
+  const comment = document.getElementById('fComment').value.trim();
+
+  const err = document.getElementById('formError');
+  err.classList.remove('show');
+  err.textContent = '';
+
+  if (!fio || !org || !service || !dateStart || !dateEnd) {
+    err.textContent = 'Заполните все обязательные поля (*) — в том числе дату окончания.';
+    err.classList.add('show');
+    return;
+  }
+  if (parseDate(dateEnd) && parseDate(dateStart) && parseDate(dateEnd) < parseDate(dateStart)) {
+    err.textContent = 'Дата окончания не может быть раньше даты выдачи.';
+    err.classList.add('show');
+    return;
+  }
+
+  const rec = {
+    id: state.nextId++,
+    csvId, fio, org, type, service, level, status, responsible, comment,
+    dateStart: normalizeDate(dateStart),
+    dateEnd: normalizeDate(dateEnd),
+    dateRevoked: status === 'Отозван' ? normalizeDate(dateEnd) : ''
+  };
+  state.records.unshift(rec);
+  logAction('Добавлен доступ', `${rec.fio} — ${rec.service} (${rec.org}), уровень: ${rec.level}`);
+  showToast(`Доступ добавлен: ${rec.fio}`);
+  closeForm();
+  renderAll();
+}
+
+function openForm() {
+  document.getElementById('formPanel').classList.add('open');
+  document.getElementById('btnToggleForm').textContent = '× Скрыть форму';
+  // значения по умолчанию
+  document.getElementById('fDateStart').value = state.checkDate;
+  document.getElementById('fDateEnd').value = '';
+  document.getElementById('fCsvId').value = generateNextCsvId();
+  document.getElementById('fResponsible').value = '';
+  document.getElementById('fComment').value = '';
+  document.getElementById('fFio').focus();
+}
+
+function closeForm() {
+  document.getElementById('formPanel').classList.remove('open');
+  document.getElementById('btnToggleForm').textContent = '+ Добавить доступ';
+  // очистка
+  ['fCsvId','fFio','fOrg','fService','fDateEnd','fResponsible','fComment'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fDateStart').value = state.checkDate;
+  document.getElementById('fLevel').value = 'Просмотр';
+  document.getElementById('fStatus').value = 'Активен';
+  document.getElementById('fType').value = 'Подрядчик';
+  document.getElementById('formError').classList.remove('show');
+  document.getElementById('adminWarning').classList.remove('show');
+}
+
+function toggleForm() {
+  const p = document.getElementById('formPanel');
+  if (p.classList.contains('open')) closeForm();
+  else openForm();
+}
+
+function toggleAdminWarning() {
+  const level = document.getElementById('fLevel').value;
+  const warn = document.getElementById('adminWarning');
+  if (level === 'Администратор') warn.classList.add('show');
+  else warn.classList.remove('show');
+}
+
+// ============================================================
+// CSV: ЗАГРУЗКА И ВЫГРУЗКА
+// ============================================================
+function downloadCsv() {
+  const csv = recordsToCsv(state.records);
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `registry_${state.checkDate}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  logAction('Скачан CSV', `${state.records.length} записей в файле registry_${state.checkDate}.csv`);
+  showToast('CSV выгружен');
+}
+
+function handleCsvUpload(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const text = e.target.result;
+      const records = csvToRecords(text);
+      if (records.length === 0) throw new Error('В CSV нет записей.');
+      state.records = records;
+      logAction('Загружен CSV', `файл «${file.name}», ${records.length} записей`);
+      showToast(`Загружено записей: ${records.length}`);
+      renderAll();
+    } catch (err) {
+      showToast('Ошибка загрузки CSV: ' + err.message);
+    }
+  };
+  reader.onerror = () => showToast('Не удалось прочитать файл');
+  reader.readAsText(file, 'UTF-8');
+  // сбрасываем input, чтобы можно было загрузить тот же файл повторно
+  evt.target.value = '';
+}
+
+// ============================================================
+// ТОСТЫ
+// ============================================================
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ============================================================
+// ЭКРАНИРОВАНИЕ
+// ============================================================
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s);
+}
+
+// ============================================================
+// СОРТИРОВКА
+// ============================================================
+function toggleSort() {
+  if (state.sort.direction === 'asc') state.sort.direction = 'desc';
+  else state.sort.direction = 'asc';
+  document.getElementById('sortInd').textContent = state.sort.direction === 'asc' ? '▲' : '▼';
+  renderTable();
+}
+
+// ============================================================
+// ПРИВЯЗКА СОБЫТИЙ
+// ============================================================
+function bindEvents() {
+  document.getElementById('checkDate').addEventListener('change', e => {
+    state.checkDate = e.target.value || todayStr();
+    renderAll();
+  });
+
+  document.getElementById('filterRisk').addEventListener('change', e => { state.filters.risk = e.target.value; renderTable(); });
+  document.getElementById('filterService').addEventListener('change', e => { state.filters.service = e.target.value; renderTable(); });
+  document.getElementById('filterType').addEventListener('change', e => { state.filters.type = e.target.value; renderTable(); });
+  document.getElementById('filterSearch').addEventListener('input', e => { state.filters.search = e.target.value; renderTable(); });
+
+  document.getElementById('btnToggleForm').addEventListener('click', toggleForm);
+  document.getElementById('btnSaveAccess').addEventListener('click', addAccessFromForm);
+  document.getElementById('btnCancelForm').addEventListener('click', closeForm);
+  document.getElementById('fLevel').addEventListener('change', toggleAdminWarning);
+
+  document.getElementById('btnLoadCsv').addEventListener('click', () => document.getElementById('csvFileInput').click());
+  document.getElementById('csvFileInput').addEventListener('change', handleCsvUpload);
+  document.getElementById('btnDownloadCsv').addEventListener('click', downloadCsv);
+
+  document.querySelector('th.sortable').addEventListener('click', toggleSort);
+}
+
+// ============================================================
+// ЗАПУСК
+// ============================================================
+function init() {
+  loadDemoData();
+  document.getElementById('checkDate').value = state.checkDate;
+  document.getElementById('sortInd').textContent = '▲';
+  bindEvents();
+  renderAll();
+  logAction('Инициализация', `загружено демо-данных: ${state.records.length} записей`);
+}
+
+init();
+</script>
+
+</body>
+</html>
