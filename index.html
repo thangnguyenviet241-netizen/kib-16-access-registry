@@ -292,6 +292,15 @@
     user-select: none;
     white-space: nowrap;
   }
+  th.col-fio, td.col-fio { min-width: 180px; white-space: normal; word-break: break-word; }
+  #tableBody td:first-child, thead th:first-child { white-space: nowrap; }
+  /* Узкое окно: закреплена только кнопка действия, остальные столбцы прокручиваются */
+  th.col-end-date, td.col-end-date, th.col-risk, td.col-risk { position: static; box-shadow: none; }
+  th.col-action, td.col-action { box-shadow: -2px 0 4px rgba(0,0,0,0.06); }
+  .field.invalid input, .field.invalid select { border-color: #c62828 !important; background: #fff5f5; }
+  .field-hint { display: none; color: #c62828; font-size: 12px; margin-top: 4px; }
+  .field.invalid .field-hint { display: block; }
+  .filter-count { font-size: 13px; color: #555; margin-left: 8px; white-space: nowrap; }
   thead th.sortable:hover { color: var(--primary); }
   thead th .sort-ind {
     font-size: 10px;
@@ -511,6 +520,8 @@
 
       <span class="filter-label">Поиск:</span>
       <input type="text" id="filterSearch" placeholder="ФИО или организация" style="width: 220px;">
+      <button class="btn" id="btnResetFilters" type="button">Сбросить фильтры</button>
+      <span class="filter-count" id="filterCount"></span>
     </div>
 
     <div class="spacer"></div>
@@ -531,10 +542,12 @@
       <div class="field">
         <label>ФИО внешнего пользователя <span class="req">*</span></label>
         <input type="text" id="fFio" placeholder="Иванов Иван Иванович">
+        <div class="field-hint" id="hint-fFio">Укажите ФИО</div>
       </div>
       <div class="field">
         <label>Организация <span class="req">*</span></label>
         <input type="text" id="fOrg" placeholder='ООО «Ромашка»'>
+        <div class="field-hint" id="hint-fOrg">Укажите организацию</div>
       </div>
       <div class="field">
         <label>Тип <span class="req">*</span></label>
@@ -547,6 +560,7 @@
       <div class="field">
         <label>Сервис <span class="req">*</span></label>
         <input type="text" id="fService" placeholder="1С / CRM / Почта">
+        <div class="field-hint" id="hint-fService">Укажите сервис</div>
       </div>
       <div class="field">
         <label>Уровень доступа <span class="req">*</span></label>
@@ -566,10 +580,12 @@
       <div class="field">
         <label>Дата выдачи <span class="req">*</span></label>
         <input type="date" id="fDateStart">
+        <div class="field-hint" id="hint-fDateStart">Укажите дату выдачи</div>
       </div>
       <div class="field">
         <label>Дата окончания <span class="req">*</span></label>
         <input type="date" id="fDateEnd">
+        <div class="field-hint" id="hint-fDateEnd">Укажите дату окончания</div>
       </div>
       <div class="field">
         <label>Ответственный в компании</label>
@@ -593,7 +609,7 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>ФИО внешнего пользователя</th>
+          <th class="col-fio">ФИО внешнего пользователя</th>
           <th>Организация</th>
           <th>Тип</th>
           <th>Сервис</th>
@@ -632,7 +648,7 @@ const state = {
   records: [],
   checkDate: todayStr(),
   filters: { risk: "", service: "", type: "", search: "" },
-  sort: { field: "dateEnd", direction: "asc" },
+  sort: { field: "risk", direction: "asc" },
   log: [],
   nextId: 1
 };
@@ -742,7 +758,7 @@ function calcRisk(rec) {
 
 function riskSortValue(risk) {
   // порядок для сортировки/группировки (наибольший риск — выше)
-  return { 'Просрочен': 0, 'Истекает': 1, 'Безсрока': 2, 'Норма': 3, 'Отозван': 4 }[risk] || 5;
+  return { 'Просрочен': 0, 'Истекает': 1, 'Безсрока': 2, 'Норма': 3, 'Отозван': 4 }[risk] ?? 5;
 }
 
 // ============================================================
@@ -772,7 +788,9 @@ function loadDemoData() {
 const CSV_HEADERS = ['ID','ФИО внешнего пользователя','Организация','Тип','Сервис','Уровень доступа','Дата выдачи','Дата окончания','Статус','Ответственный в компании','Комментарий'];
 
 function csvEscape(val) {
-  const s = (val === null || val === undefined) ? '' : String(val);
+  let s = (val === null || val === undefined) ? '' : String(val);
+  // Защита от CSV-инъекции: значение, начинающееся с = + - @ TAB CR, Excel считает формулой
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   if (/[",;\n\r]/.test(s)) {
     return '"' + s.replace(/"/g, '""') + '"';
   }
@@ -780,13 +798,13 @@ function csvEscape(val) {
 }
 
 function recordsToCsv(records) {
-  const lines = [CSV_HEADERS.join(',')];
+  const lines = [CSV_HEADERS.join(';')];  // «;» — стандартный разделитель Excel в русской локали
   records.forEach(r => {
     lines.push([
       csvEscape(r.csvId), csvEscape(r.fio), csvEscape(r.org), csvEscape(r.type), csvEscape(r.service),
       csvEscape(r.level), csvEscape(r.dateStart), csvEscape(r.dateEnd), csvEscape(r.status),
       csvEscape(r.responsible), csvEscape(r.comment)
-    ].join(','));
+    ].join(';'));
   });
   return lines.join('\r\n');
 }
@@ -844,6 +862,12 @@ function csvToRecords(text) {
     comment: header.findIndex(h => /комментар|comment|note|примечан/i.test(h))
   };
 
+  // Проверка структуры: все обязательные столбцы должны быть на месте
+  const REQUIRED = { csvId:'ID', fio:'ФИО внешнего пользователя', org:'Организация', type:'Тип', service:'Сервис',
+    level:'Уровень доступа', dateStart:'Дата выдачи', dateEnd:'Дата окончания', status:'Статус' };
+  const missing = Object.keys(REQUIRED).filter(k => idx[k] < 0).map(k => REQUIRED[k]);
+  if (missing.length) throw new Error('Неверный формат CSV: отсутствуют столбцы ' + missing.join(', ') + '. Текущие данные не изменены.');
+
   const records = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -863,10 +887,26 @@ function csvToRecords(text) {
       comment: idx.comment >= 0 ? (r[idx.comment] || '').trim() : '',
       dateRevoked: ''
     };
+    const line = `Строка ${i + 1}`;
+    if (!rec.fio || !rec.org || !rec.service || !rec.dateStart)
+      throw new Error(`${line}: не заполнены ФИО, организация, сервис или дата выдачи. Текущие данные не изменены.`);
+    if (!['Активен','Отозван'].includes(rec.status))
+      throw new Error(`${line}: недопустимый статус «${rec.status}» (ожидается «Активен» или «Отозван»). Текущие данные не изменены.`);
+    if (!isValidIsoDate(rec.dateStart) || (rec.dateEnd && !isValidIsoDate(rec.dateEnd)))
+      throw new Error(`${line}: некорректная дата (формат ДД.ММ.ГГГГ или ГГГГ-ММ-ДД). Текущие данные не изменены.`);
+    if (rec.dateEnd && parseDate(rec.dateEnd) < parseDate(rec.dateStart))
+      throw new Error(`${line}: дата окончания раньше даты выдачи. Текущие данные не изменены.`);
     if (rec.status === 'Отозван') rec.dateRevoked = rec.dateEnd;
     records.push(rec);
   }
   return records;
+}
+
+function isValidIsoDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  if (!m) return false;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3];
 }
 
 function normalizeDate(s) {
@@ -941,6 +981,11 @@ function getFilteredSorted() {
   // Сортировка по дате окончания: пустые даты уходят вниз при asc
   const dir = state.sort.direction === 'asc' ? 1 : -1;
   rows.sort((a, b) => {
+    // По умолчанию: сначала по уровню риска, внутри группы — по дате окончания
+    if (state.sort.field === 'risk') {
+      const ra = riskSortValue(calcRisk(a)), rb = riskSortValue(calcRisk(b));
+      if (ra !== rb) return ra - rb;
+    }
     const da = parseDate(a.dateEnd);
     const db = parseDate(b.dateEnd);
     if (!da && !db) return 0;
@@ -962,6 +1007,8 @@ function refreshServiceFilter() {
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   const rows = getFilteredSorted();
+  const fc = document.getElementById('filterCount');
+  if (fc) fc.textContent = `Найдено: ${rows.length} из ${state.records.length}`;
   if (rows.length === 0) {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="13">Нет записей по выбранным фильтрам</td></tr>';
     return;
@@ -976,7 +1023,7 @@ function renderTable() {
       : (r.dateRevoked ? `<span style="color: var(--muted); font-size: 11px;">отозван ${formatRuDate(r.dateRevoked)}</span>` : '—');
     return `<tr class="risk-${riskClass}">
       <td>${escapeHtml(r.csvId)}</td>
-      <td>${escapeHtml(r.fio)}${adminBadge}</td>
+      <td class="col-fio">${escapeHtml(r.fio)}${adminBadge}</td>
       <td>${escapeHtml(r.org)}</td>
       <td>${escapeHtml(r.type)}</td>
       <td>${escapeHtml(r.service)}</td>
@@ -1041,12 +1088,18 @@ function addAccessFromForm() {
   err.classList.remove('show');
   err.textContent = '';
 
-  if (!fio || !org || !service || !dateStart || !dateEnd) {
-    err.textContent = 'Заполните все обязательные поля (*) — в том числе дату окончания.';
+  clearFieldErrors();
+  const values = { fFio: fio, fOrg: org, fService: service, fDateStart: dateStart, fDateEnd: dateEnd };
+  const empty = Object.keys(values).filter(id => !values[id]);
+  empty.forEach(id => markField(id));
+  if (empty.length) {
+    err.textContent = 'Заполните поля, выделенные красным.';
     err.classList.add('show');
+    document.getElementById(empty[0]).focus();
     return;
   }
   if (parseDate(dateEnd) && parseDate(dateStart) && parseDate(dateEnd) < parseDate(dateStart)) {
+    markField('fDateEnd', 'Дата окончания раньше даты выдачи');
     err.textContent = 'Дата окончания не может быть раньше даты выдачи.';
     err.classList.add('show');
     return;
@@ -1064,6 +1117,16 @@ function addAccessFromForm() {
   showToast(`Доступ добавлен: ${rec.fio}`);
   closeForm();
   renderAll();
+}
+
+function markField(id, text) {
+  const f = document.getElementById(id).closest('.field');
+  f.classList.add('invalid');
+  if (text) document.getElementById('hint-' + id).textContent = text;
+}
+function clearFieldErrors() {
+  document.querySelectorAll('.field.invalid').forEach(f => f.classList.remove('invalid'));
+  const h = document.getElementById('hint-fDateEnd'); if (h) h.textContent = 'Укажите дату окончания';
 }
 
 function openForm() {
@@ -1089,6 +1152,7 @@ function closeForm() {
   document.getElementById('fType').value = 'Подрядчик';
   document.getElementById('formError').classList.remove('show');
   document.getElementById('adminWarning').classList.remove('show');
+  clearFieldErrors();
 }
 
 function toggleForm() {
@@ -1125,6 +1189,12 @@ function downloadCsv() {
 function handleCsvUpload(evt) {
   const file = evt.target.files[0];
   if (!file) return;
+  if (!/\.csv$/i.test(file.name)) {
+    showToast('Ошибка загрузки CSV: допускаются только файлы .csv. Текущие данные не изменены.');
+    logAction('Отклонён файл', `«${file.name}» — неверное расширение`);
+    evt.target.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -1137,6 +1207,7 @@ function handleCsvUpload(evt) {
       renderAll();
     } catch (err) {
       showToast('Ошибка загрузки CSV: ' + err.message);
+      logAction('Отклонён CSV', `«${file.name}»: ${err.message}`);
     }
   };
   reader.onerror = () => showToast('Не удалось прочитать файл');
@@ -1172,7 +1243,8 @@ function escapeAttr(s) {
 // СОРТИРОВКА
 // ============================================================
 function toggleSort() {
-  if (state.sort.direction === 'asc') state.sort.direction = 'desc';
+  if (state.sort.field === 'risk') { state.sort.field = 'dateEnd'; state.sort.direction = 'asc'; }
+  else if (state.sort.direction === 'asc') state.sort.direction = 'desc';
   else state.sort.direction = 'asc';
   document.getElementById('sortInd').textContent = state.sort.direction === 'asc' ? '▲' : '▼';
   renderTable();
@@ -1194,6 +1266,12 @@ function bindEvents() {
 
   document.getElementById('btnToggleForm').addEventListener('click', toggleForm);
   document.getElementById('btnSaveAccess').addEventListener('click', addAccessFromForm);
+  document.getElementById('btnResetFilters').addEventListener('click', () => {
+    state.filters = { risk: '', service: '', type: '', search: '' };
+    ['filterRisk','filterService','filterType'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('filterSearch').value = '';
+    renderTable();
+  });
   document.getElementById('btnCancelForm').addEventListener('click', closeForm);
   document.getElementById('fLevel').addEventListener('change', toggleAdminWarning);
 
@@ -1210,7 +1288,7 @@ function bindEvents() {
 function init() {
   loadDemoData();
   document.getElementById('checkDate').value = state.checkDate;
-  document.getElementById('sortInd').textContent = '▲';
+  document.getElementById('sortInd').textContent = '';
   bindEvents();
   renderAll();
   logAction('Инициализация', `загружено демо-данных: ${state.records.length} записей`);
